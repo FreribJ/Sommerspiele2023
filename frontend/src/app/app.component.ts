@@ -8,13 +8,14 @@ import {ActivatedRoute, Router} from "@angular/router";
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = `Frenker Sommerspiele 2025`;
+  title = `Frenker Sommerspiele ${new Date().getFullYear()}`;
 
   menuOpen = false;
   newOpen = false
   menuItems: { name: string, link: string, icon: string }[] = []
   loginSuccess: boolean = false
   returnAfterLogin?: string
+  year = new Date().getFullYear();
 
 
   constructor(private service: ContentService,
