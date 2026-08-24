@@ -1,13 +1,22 @@
-<div *ngIf="easteregg">
-  <h1 class="title">Du hast ein Easteregg gefunden!</h1>
-  <h2 class="subtitle">{{easteregg.title}}</h2>
-  <p *ngIf="easteregg.text" class="field">{{easteregg.text}}</p>
-  <div class="image ">
-    <img style="border-radius: 10px; box-shadow: 5px 5px 5px #ccc;" src="{{easteregg.srcImage}}">
-  </div>
-</div>
-<div *ngIf="!easteregg">
-  <h1 class="title">
-    Nicht schummeln!!!
-  </h1>
-</div>
+@if (easteregg()) {
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Du hast ein Easteregg gefunden!</mat-card-title>
+      <mat-card-subtitle>{{ easteregg()!.title }}</mat-card-subtitle>
+    </mat-card-header>
+    @if (easteregg()!.text) {
+      <mat-card-content>
+        <p class="field">{{ easteregg()!.text }}</p>
+      </mat-card-content>
+    }
+    <mat-card-content>
+      <div class="image">
+        <img
+          style="border-radius: 10px; box-shadow: 5px 5px 5px #ccc; max-width: 100%;"
+          [src]="easteregg()!.srcImage">
+      </div>
+    </mat-card-content>
+  </mat-card>
+} @else {
+  <h1 class="title">Nicht schummeln!!!</h1>
+}

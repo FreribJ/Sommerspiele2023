@@ -1,7 +1,14 @@
-import {Component} from '@angular/core';
-import {Easteregg} from "../model/objects";
-import {ContentService} from "../content.service";
-import {Router} from "@angular/router";
+import { Component, OnInit, signal, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
+import { ContentService } from '../content.service';
+import { Easteregg } from '../model/objects';
 
 export const allEastereggs: Easteregg[] = [
   {id: 19816, srcImage: './assets/19816.png', title: 'Das Geschäft muss sein'},
@@ -21,45 +28,60 @@ export const allEastereggs: Easteregg[] = [
   {id: 64182, srcImage: './assets/64182.jpg', title: 'Ahhhhhh'},
   {id: 18946, srcImage: './assets/18946.jpg', title: 'Spannend'},
   {id: 71865, srcImage: './assets/71865.webp', title: 'Wo TÜV?'},
-]
+];
 
 @Component({
   selector: 'app-eastereggs',
+  standalone: true,
+  imports: [
+    FormsModule,
+    RouterLink,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatListModule,
+    MatIconModule,
+  ],
   templateUrl: './eastereggs.component.html',
-  styleUrls: ['./eastereggs.component.css']
+  styleUrl: './eastereggs.component.css',
 })
-export class EastereggsComponent {
+export class EastereggsComponent implements OnInit {
+  private content = inject(ContentService);
+  private router = inject(Router);
 
-  foundEastereggs: Easteregg[] = []
-  typedNumber?: number
-  notFound = false
+  foundEastereggs = signal<Easteregg[]>([]);
+  typedNumber = signal<number | null>(null);
+  notFound = signal(false);
 
-  constructor(private service: ContentService,
-              private router: Router) {
-    this.service.getFoundEastereggs().subscribe(result => {
+  ngOnInit(): void {
+    this.content.getFoundEastereggs().subscribe(result => {
+      const found: Easteregg[] = [];
       result.forEach(ee => {
-        let temp = allEastereggs.find(eee => eee.id == ee.id)
-        if (temp)
-          this.foundEastereggs.push(temp)
-      })
-    })
+        const temp = allEastereggs.find(eee => eee.id === ee.id);
+        if (temp) found.push(temp);
+      });
+      this.foundEastereggs.set(found);
+    });
   }
 
-  onEnterPress(evt: KeyboardEvent) {
-    if (evt.key == "Enter")
-      this.onGoClick()
-    else
-      this.notFound = false
-  }
-
-  onGoClick() {
-    if (this.typedNumber) {
-      const id = Math.floor(this.typedNumber)
-      if (allEastereggs.find(ee => ee.id == id))
-        this.router.navigate([`eastereggs`, id],)
-      else
-        this.notFound = true
+  onEnterPress(evt: KeyboardEvent): void {
+    if (evt.key === 'Enter') {
+      this.onGoClick();
+    } else {
+      this.notFound.set(false);
     }
   }
 
+  onGoClick(): void {
+    const num = this.typedNumber();
+    if (num) {
+      const id = Math.floor(num);
+      if (allEastereggs.find(ee => ee.id === id)) {
+        this.router.navigate(['eastereggs', id]);
+      } else {
+        this.notFound.set(true);
+      }
+    }
+  }
 }

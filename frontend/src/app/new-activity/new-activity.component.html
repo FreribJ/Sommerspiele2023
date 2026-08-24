@@ -1,61 +1,61 @@
-<h2 class="subtitle">Team {{team?.name}} hat im Spiel</h2>
+<h2>{{ planId() > 0 ? 'Aktivität bearbeiten' : 'Neue Aktivität' }}</h2>
 
-<div class="field" style="margin-bottom: 0">
-  <div class="control has-icons-left">
-    <div class="select is-fullwidth">
-      <select [(ngModel)]="selectedGameId" [disabled]="planId !== -1 || allreadyFilledOut">
-        <option *ngFor="let g of games" value="{{g.id}}">{{g.name}}</option>
-      </select>
-      <span class="icon is-small is-left">
-        <i class="fas fa-dice"></i>
-      </span>
-    </div>
-  </div>
-</div>
+<mat-card>
+  <mat-card-content>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Spiel</mat-label>
+      <mat-select
+        [ngModel]="selectedGameId()"
+        (ngModelChange)="selectedGameId.set($event)"
+        [disabled]="planId() > 0">
+        @for (g of games(); track g.id) {
+          <mat-option [value]="g.id">{{ g.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
 
-<a *ngIf="selectedGameId" style="font-size: small; padding-top: 0" (click)="showDescriptionClick()">Beschreibung anzeigen</a>
+    @if (selectedGame()?.description) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>Spielbeschreibung</mat-expansion-panel-header>
+        <p>{{ selectedGame()!.description }}</p>
+      </mat-expansion-panel>
+    }
 
-<h2 class="subtitle">gegen das Team</h2>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Gegner</mat-label>
+      <mat-select
+        [ngModel]="selectedOpponentId()"
+        (ngModelChange)="selectedOpponentId.set($event)"
+        [disabled]="planId() > 0">
+        @for (t of opponents(); track t.id) {
+          <mat-option [value]="t.id">{{ t.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
 
-<div class="field">
-  <div class="control has-icons-left">
-    <div class="select is-fullwidth">
-      <select [(ngModel)]="selectedOpponentId" [disabled]="planId !== -1 || allreadyFilledOut">
-        <option *ngFor="let t of oponents" value="{{t.id}}">{{t.name}} ({{t.partner1}} & {{t.partner2}})</option>
-      </select>
-      <span class="icon is-small is-left">
-        <i class="fas fa-user-group"></i>
-      </span>
-    </div>
-  </div>
-</div>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Ergebnis</mat-label>
+      <mat-select
+        [ngModel]="selectedState()"
+        (ngModelChange)="selectedState.set($event)"
+        [disabled]="alreadyFilledOut()">
+        <mat-option value="won">🏆 Gewonnen</mat-option>
+        <mat-option value="lost">❌ Verloren</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </mat-card-content>
 
-
-<div class="field">
-  <div class="control has-icons-left">
-    <div class="select is-fullwidth">
-      <select [(ngModel)]="selectedState" [disabled]="allreadyFilledOut">
-        <option value="won">Gewonnen</option>
-        <option value="lost">Verloren</option>
-      </select>
-      <span class="icon is-small is-left">
-        <i class="fas fa-trophy"></i>
-      </span>
-    </div>
-  </div>
-</div>
-
-<button class="button is-primary is-fullwidth {{isLoading ? 'is-loading' : ''}}"
-        [disabled]="!selectedGameId || !selectedOpponentId || !selectedState" (click)="onFinishClick()">{{allreadyFilledOut ? 'zurück' : 'Speichern'}}
-</button>
-
-
-<div *ngIf="game" class="modal {{showDescription ? 'is-active' : ''}}" style="padding: 20pt">
-  <div class="modal-background" (click)="showDescription = false"></div>
-  <div class="modal-content box">
-    <h1 class="title">{{game!.name}}</h1>
-    <span  [innerHTML]="game!.description"></span>
-  </div>
-  <button class="modal-close is-large" aria-label="close" (click)="showDescription = false"></button>
-</div>
-
+  <mat-card-actions>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="submit()"
+      [disabled]="isLoading() || !selectedGameId() || !selectedOpponentId() || !selectedState() || alreadyFilledOut()">
+      @if (isLoading()) {
+        <mat-spinner diameter="20"></mat-spinner>
+      } @else {
+        Eintragen
+      }
+    </button>
+  </mat-card-actions>
+</mat-card>

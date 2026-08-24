@@ -1,123 +1,110 @@
-import {Component, OnInit} from '@angular/core';
-import {ActivatedRoute, Router} from "@angular/router";
-import {ContentService} from "../content.service";
-import {Activity, Game, Team} from "../model/objects";
-import {Location} from "@angular/common";
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { ContentService } from '../content.service';
 
 @Component({
   selector: 'app-new-activity',
+  standalone: true,
+  imports: [
+    FormsModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatExpansionModule,
+  ],
   templateUrl: './new-activity.component.html',
-  styleUrls: ['./new-activity.component.css']
+  styleUrl: './new-activity.component.css',
 })
 export class NewActivityComponent implements OnInit {
+  private content = inject(ContentService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private snack = inject(MatSnackBar);
 
-  team?: Team
+  readonly teams = this.content.teams;
+  readonly games = this.content.games;
+  readonly myTeam = this.content.myTeam;
 
-  oponents: Team[] = []
-  selectedOpponentId?: number
+  readonly opponents = computed(() =>
+    this.teams().filter(t => t.id !== this.myTeam()?.id)
+  );
 
-  games: Game[] = []
-  selectedGameId?: number
+  planId = signal(-1);
+  selectedGameId = signal<number | null>(null);
+  selectedOpponentId = signal<number | null>(null);
+  selectedState = signal<'won' | 'lost' | null>(null);
+  isLoading = signal(false);
+  alreadyFilledOut = signal(false);
 
-  selectedState?: 'won' | 'lost'
-
-  planId: number = -1
-  allreadyFilledOut = false
-
-  isLoading = false
-
-  showDescription = false
-  game?: Game
-
-  constructor(private router: Router,
-              private service: ContentService,
-              private route: ActivatedRoute,
-              private location: Location) {
-    service.getTeam().then(team => {
-      this.team = team
-      service.getTeams().then(teams => {
-        this.oponents = teams.filter(team => team.id !== this.team?.id)
-      })
-    })
-    this.service.getGames().then(games => this.games = games)
-  }
-
-  showDescriptionClick() {
-    const game = this.games.find(g => g.id == this.selectedGameId)
-    if (game) {
-      this.game = game
-      this.showDescription = true
-    }
-  }
-
-  onFinishClick() {
-    if (this.allreadyFilledOut) {
-      this.location.back()
-      return
-    }
-    this.isLoading = true
-    if (this.planId == -1) {
-      if (!this.selectedGameId || !this.selectedOpponentId || !this.team) {
-        throw new Error('Select all Fields')
-      }
-      this.service.newActivity(this.selectedGameId!, this.selectedOpponentId!, this.selectedState!).subscribe(value => {
-        this.location.back()
-        setTimeout(() => {
-          if (this.location.path() == '/new')
-            this.router.navigate(['activities'], {replaceUrl: true})
-        }, 100)
-      }, error => {
-        if (error.status === 403) {
-          alert('Das Eintragen von Aktivitäten wurde noch nicht freigegeben oder ist bereits abgeschlossen. ')
-        } else
-          alert('Ein Fehler ist aufgetreten. Versuche es erneut.')
-        this.isLoading = false
-      })
-    } else {
-      const winnerId = this.selectedState === 'won' ? this.team!.id : this.selectedOpponentId!
-      this.service.editActivity(this.planId, winnerId).subscribe(value => {
-        this.location.back()
-        // this.router.navigate(['plans'], {replaceUrl: true})
-      }, error => {
-        if (error.status === 403) {
-          alert('Das Eintragen von Aktivitäten wurde noch nicht freigegeben oder ist bereits abgeschlossen. ')
-        } else if (error.status === 409) {
-          alert('Jemand anderes hat bereits ein Ergebnis eingetragen.')
-          this.location.back()
-          // this.router.navigate(['plans'])
-        } else
-          alert('Ein Fehler ist aufgetreten. Versuche es erneut.')
-        this.isLoading = false
-      })
-    }
-  }
+  readonly selectedGame = computed(() =>
+    this.games().find(g => g.id === this.selectedGameId())
+  );
 
   ngOnInit(): void {
-    this.route.queryParamMap.subscribe(params => {
-      this.isLoading = true
-      if (params.has('id')) {
-        this.service.getActivities().subscribe(activities => {
-          this.isLoading = false
-          const activity = activities.find(a => a.id === parseInt(<string>params.get('id')))
-          if (activity) {
-            this.planId = activity.id!
-            this.selectedGameId = activity.game.id
-            this.selectedOpponentId = activity.opponent.id
-            if (activity.state !== "open") {
-              this.selectedState = activity.state
-              this.allreadyFilledOut = true
-            }
-          } else {
-            this.router.navigate(['new'])
+    this.content.getTeams().subscribe();
+    this.content.getGames().subscribe();
+    this.content.getMyTeam().subscribe();
+
+    const id = this.route.snapshot.queryParams['id'];
+    if (id) {
+      this.planId.set(+id);
+      this.isLoading.set(true);
+      this.content.loadActivities().subscribe(() => {
+        this.isLoading.set(false);
+        const plan = this.content.activities().find(a => a.id === +id);
+        if (plan) {
+          if (plan.state !== 'open') {
+            this.alreadyFilledOut.set(true);
+            this.selectedState.set(plan.state as 'won' | 'lost');
           }
-        })
-      } else {
-        this.isLoading = false
-        this.planId = -1
-        this.selectedGameId = undefined
-        this.selectedOpponentId = undefined
-      }
-    })
+          this.selectedGameId.set(plan.game.id);
+          this.selectedOpponentId.set(plan.opponent.id);
+        }
+      });
+    }
   }
 
+  submit(): void {
+    const gameId = this.selectedGameId();
+    const opponentId = this.selectedOpponentId();
+    const state = this.selectedState();
+
+    if (!gameId || !opponentId || !state) return;
+
+    this.isLoading.set(true);
+
+    const obs =
+      this.planId() > 0
+        ? this.content.editActivity(
+            this.planId(),
+            state === 'won' ? this.myTeam()!.id : opponentId
+          )
+        : this.content.newActivity(gameId, opponentId, state);
+
+    obs.subscribe({
+      next: () => {
+        this.router.navigate(['/activities']);
+      },
+      error: (e: any) => {
+        this.isLoading.set(false);
+        this.snack.open(
+          e.error?.message ?? 'Ein Fehler ist aufgetreten.',
+          undefined,
+          { duration: 3000 }
+        );
+      },
+    });
+  }
 }

@@ -1,75 +1,32 @@
-<div class="container" style="height: 100%; display: flex; flex-direction: column">
-  <div class="fixed" style="overflow: auto">
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="sidenav.toggle()" aria-label="Menü">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <span class="app-title" [routerLink]="auth.isLoggedIn() ? '/' : '/login'">{{ title }}</span>
+  <span class="spacer"></span>
+  @if (auth.easterEggCount() > 0) {
+    <mat-icon [matBadge]="auth.easterEggCount()" matBadgeColor="accent" routerLink="/eastereggs" style="cursor:pointer">egg</mat-icon>
+  }
+</mat-toolbar>
 
-    <div class="box" style="padding: 20pt; background: #8abdb8; margin: 10pt">
-      <button class="button is-light" (click)="menuOpen = true">
-        <i class="fas fa-bars"></i>
-      </button>
-      <a [routerLink]="loginSuccess ? '' : 'login'">
-        <h1 class="title is-inline"> Frenker´s Sommerspiele {{ year }}</h1>
-      </a>
-    </div>
-
-    <div class="modal {{menuOpen ? 'is-active' : ''}}" style="padding: 20pt">
-      <div class="modal-background" (click)="menuOpen = false"></div>
-      <div class="modal-content">
-        <a class="box" *ngFor="let item of menuItems" routerLink="{{item.link}}"
-           style="display: flex; flex-direction: row; align-items: center" (click)="menuOpen = false">
-          <span class="icon is-large" style="margin-right: 1em">
-            <i class="fas {{item.icon}} fa-2x"></i>
-          </span>
-          <div class="has-text-centered">
-            <p class="subtitle">{{item.name}}</p>
-          </div>
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav #sidenav mode="over" [fixedInViewport]="true" fixedTopGap="64">
+    <mat-nav-list>
+      @for (item of menuItems(); track item.link) {
+        <a mat-list-item [routerLink]="item.link" (click)="sidenav.close()">
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.name }}</span>
         </a>
-      </div>
-      <button class="modal-close is-large" aria-label="close" (click)="menuOpen = false"></button>
-    </div>
-
-    <div style="flex-grow: 1; margin: 20pt 20pt 105px;">
-      <router-outlet class="fixed"></router-outlet>
-    </div>
-
-    <div class="modal {{newOpen ? 'is-active' : ''}}" style="padding: 20pt">
-      <div class="modal-background" (click)="newOpen = false"></div>
-      <div class="modal-content">
-
-        <a class="box" routerLink="plans"
-           (click)="newOpen = false">
-          <div style="display: flex; flex-direction: row; align-items: center">
-            <span class="icon is-large" style="margin-right: 1em">
-              <i class="fas fa-table-list fa-2x"></i>
-            </span>
-            <div>
-              <h2 class="subtitle">Spiel vom Spielplan</h2>
-              <p>Zählt für die Team UND Cliquenwertung</p>
-            </div>
-          </div>
+      }
+      @if (auth.isLoggedIn()) {
+        <a mat-list-item (click)="logout(); sidenav.close()">
+          <mat-icon matListItemIcon>logout</mat-icon>
+          <span matListItemTitle>Abmelden</span>
         </a>
-        <a class="box" routerLink="new"
-           (click)="newOpen = false">
-          <div style="display: flex; flex-direction: row; align-items: center">
-            <span class="icon is-large" style="margin-right: 1em;">
-              <i class="fas fa-regular fa-file fa-2x"></i>
-            </span>
-            <div>
-              <h2 class="subtitle">Freies Spiel</h2>
-              <p>Zählt NUR für die Teamwertung</p>
-            </div>
-          </div>
-        </a>
-      </div>
-      <button class="modal-close is-large" aria-label="close" (click)="newOpen = false"></button>
-    </div>
-  </div>
-
-  <a *ngIf="loginSuccess" class="lose" style="padding-right: 20pt">
-    <button class="button is-success is-rounded is-medium" (click)="newOpen = true">
-        <span class="icon">
-          <i class="fas fa-add"></i>
-        </span>
-      <span>Neues Spiel</span>
-
-    </button>
-  </a>
-</div>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+  <mat-sidenav-content class="main-content">
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

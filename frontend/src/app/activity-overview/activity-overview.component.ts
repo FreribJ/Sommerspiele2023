@@ -1,25 +1,16 @@
-import {Component, OnDestroy} from '@angular/core';
-import {Activity} from "../model/objects";
-import {ContentService} from "../content.service";
-import {Subscription} from "rxjs";
-
+import { Component, OnInit, computed, inject } from '@angular/core';
+import { MatListModule } from '@angular/material/list';
+import { ActivityComponent } from '../framework/activity/activity.component';
+import { ContentService } from '../content.service';
 @Component({
-  selector: 'app-admin-activity-overview',
-  templateUrl: './activity-overview.component.html',
-  styleUrls: ['./activity-overview.component.css']
+  selector: 'app-activity-overview', standalone: true,
+  imports: [MatListModule, ActivityComponent],
+  template: `<h2>Gespielte Spiele</h2>
+  @for (a of completed(); track a.id) { <app-activity [activity]="a"/> }
+  @if (!completed().length) { <p>Noch keine Ergebnisse.</p> }`
 })
-export class ActivityOverviewComponent implements OnDestroy {
-
-  activities: Activity[] = []
-
-  subscribtion: Subscription;
-
-  constructor(private service: ContentService) {
-    //TODO: evtl sortieren
-    this.subscribtion = this.service.getActivities().subscribe(activities => this.activities = activities.filter(a => a.state !== "open"))
-  }
-
-  ngOnDestroy(): void {
-    this.subscribtion.unsubscribe();
-  }
+export class ActivityOverviewComponent implements OnInit {
+  private content = inject(ContentService);
+  completed = computed(() => this.content.activities().filter(a => a.state !== 'open'));
+  ngOnInit(): void { this.content.loadActivities().subscribe(); }
 }

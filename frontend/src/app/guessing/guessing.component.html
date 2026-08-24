@@ -1,5 +1,25 @@
-<h1 class="title">Wie viele Maoam sind in dem Glas?</h1>
-<h2 class="subtitle">Eure Schätzung:</h2>
-<input class="input field" type="number" [(ngModel)]="typedGuess" (keydown)="onEnterPress($event)">
-<button class="button is-primary is-fullwidth {{isLoading ? 'is-loading' : ''}}" [disabled]="!typedGuess || typedGuess < 0 || confirmedGuess === typedGuess"
-        (click)="onSendClick()">{{!confirmedGuess ? 'Abgeben' : 'Ändernung senden'}}</button>
+<h2>Schätzfrage</h2>
+
+<mat-card>
+  <mat-card-content>
+    <p>Wie viele Aktivitäten werden insgesamt gespielt?</p>
+    @if (!entriesOpen()) {
+      <p class="closed-hint">Einträge sind aktuell geschlossen.</p>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>Deine Schätzung</mat-label>
+      <input matInput type="number"
+             [ngModel]="newGuess()" (ngModelChange)="newGuess.set($event)"
+             (keyup.enter)="save()"
+             [disabled]="!entriesOpen()"/>
+    </mat-form-field>
+    @if (currentGuess() !== undefined) {
+      <p>Aktuelle Schätzung: <strong>{{ currentGuess() }}</strong></p>
+    }
+  </mat-card-content>
+  <mat-card-actions>
+    <button mat-raised-button color="primary" (click)="save()" [disabled]="!entriesOpen()">
+      Speichern
+    </button>
+  </mat-card-actions>
+</mat-card>

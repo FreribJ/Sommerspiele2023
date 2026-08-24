@@ -1,18 +1,34 @@
-<h1 class="title">Willkommen Team {{team ? team.name : '[lädt...]'}}, Viel Erfolg!</h1>
-<div class="box">
-  <h2 class="subtitle">Teammitglieder</h2>
-  <p>{{team ? team.partner1 : 'lädt...'}}</p>
-  <p>{{team ? team.partner2 : 'lädt...'}}</p>
+<h2>Willkommen, {{ team()?.name || '...' }}!</h2>
+<p class="subtitle">{{ team()?.partner1 }} &amp; {{ team()?.partner2 }}</p>
+
+<div class="stats-grid">
+  <mat-card class="stat-card won">
+    <mat-card-content>
+      <mat-icon>emoji_events</mat-icon>
+      <div class="stat-number">{{ gamesWon() }}</div>
+      <div class="stat-label">Siege</div>
+    </mat-card-content>
+  </mat-card>
+  <mat-card class="stat-card lost">
+    <mat-card-content>
+      <mat-icon>close</mat-icon>
+      <div class="stat-number">{{ gamesLost() }}</div>
+      <div class="stat-label">Niederlagen</div>
+    </mat-card-content>
+  </mat-card>
 </div>
-<div class="box">
-  <h2 class="subtitle">Spiele gewonnen:</h2>
-  <h2>{{gamesWon == -1 ? 'lädt...' : gamesWon}}</h2>
-</div>
-<div class="box">
-  <h2 class="subtitle">Spiele verloren:</h2>
-  <h2>{{gamesWon == -1 ? 'lädt...' : gamesLost}}</h2>
-</div>
-<div class="box">
-  <h2 class="subtitle" style="font-weight: bold">Sieges-Quote:</h2>
-  <h2>{{gamesWon == -1 ? 'lädt...' : winRate | percent }}</h2>
+
+<mat-card class="winrate-card">
+  <mat-card-header>
+    <mat-card-title>Winrate: {{ winRate() | percent }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-progress-bar mode="determinate" [value]="winRate() * 100" color="primary"></mat-progress-bar>
+  </mat-card-content>
+</mat-card>
+
+<div class="actions">
+  <button mat-raised-button color="primary" routerLink="/new">+ Ergebnis eintragen</button>
+  <button mat-stroked-button routerLink="/plans">Spielplan</button>
+  <button mat-stroked-button routerLink="/activities">Alle Spiele</button>
 </div>

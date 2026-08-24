@@ -1,42 +1,42 @@
-<h2 class="title">Login</h2>
-<div class="field">
-  <label class="label">Teamname</label>
-  <div class="control has-icons-left">
-    <div class="select is-fullwidth">
-      <select [(ngModel)]="selectedTeamId" (ngModelChange)="teamSelected()">
-        <option *ngFor="let t of teams" [value]="t.id">{{ t.name }}</option>
-      </select>
-      <span class="icon is-small is-left">
-        <i class="fas fa-user-group"></i>
-      </span>
-    </div>
-  </div>
-</div>
-
-
-<div class="field">
-  <label class="label">Passwort{{ selectedTeam?.passwordSet == false ? " festlegen" : "" }}</label>
-  <div class="control has-icons-left has-icons-right">
-    <input class="input {{passwordWrong ? 'is-danger' : ''}}" [type]="viewPassword ? 'text' : 'password'"
-           [placeholder]="selectedTeam?.passwordSet == false ? 'Neues Passwort festlegen' : 'Passwort'"
-           (keyup)="onEnterClick($event)" [(ngModel)]="password">
-    <span class="icon is-small is-left">
-      <i class="fas fa-lock"></i>
-    </span>
-  </div>
-
-  <label (click)="showPassword()">
-    <a>
-      {{ viewPassword ? 'Passwort verstecken' : 'Passwort anzeigen' }}
-
-    </a>
-  </label>
-</div>
-
-<div class="field">
-  <div class="control">
-    <button class="button is-success is-fullwidth {{isLoading ? 'is-loading' : ''}}" (click)="onLoginClick()"
-            [disabled]="!password || !password.trim() || !selectedTeamId">Login
-    </button>
-  </div>
+<div class="login-container">
+  <mat-card class="login-card">
+    <mat-card-header>
+      <mat-card-title>Sommerspiele Login</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Team auswählen</mat-label>
+        <mat-select [ngModel]="selectedTeamId()" (ngModelChange)="selectedTeamId.set($event)">
+          @for (team of teams(); track team.id) {
+            <mat-option [value]="team.id">{{ team.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (selectedTeam()) {
+        <p class="team-info">{{ selectedTeam()!.partner1 }} &amp; {{ selectedTeam()!.partner2 }}</p>
+      }
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{ selectedTeam()?.passwordSet ? 'Passwort' : 'Passwort festlegen' }}</mat-label>
+        <input matInput [type]="viewPassword() ? 'text' : 'password'"
+               [ngModel]="password()" (ngModelChange)="password.set($event)"
+               (keyup.enter)="login()"/>
+        <button mat-icon-button matSuffix (click)="viewPassword.update(v => !v)">
+          <mat-icon>{{ viewPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+      </mat-form-field>
+      @if (passwordWrong()) {
+        <p class="error">Falsches Passwort</p>
+      }
+    </mat-card-content>
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="login()"
+              [disabled]="isLoading() || !selectedTeamId() || !password()">
+        @if (isLoading()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          Anmelden
+        }
+      </button>
+    </mat-card-actions>
+  </mat-card>
 </div>

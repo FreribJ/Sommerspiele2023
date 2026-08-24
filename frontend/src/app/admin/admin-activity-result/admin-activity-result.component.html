@@ -1,46 +1,46 @@
-<h1 class="title">Ergebnisse</h1>
+<h2>Ergebnisse</h2>
 
-<button class="button is-fullwidth field {{loadingCount() ? 'is-disabled' : acceptEntries ? 'is-danger' : 'is-success'}}" (click)="onToggleEntriesClick()"
-        [disabled]="loadingCount()">{{loadingCount() ? 'Lädt...' : acceptEntries ? 'Abgabe beenden' : 'Abgabe starten'}} (Press {{toggleCountdown}}x)</button>
+<mat-card style="margin-bottom:16px">
+  <mat-card-content>
+    <mat-slide-toggle [checked]="acceptEntries()" (change)="toggleAcceptEntries()">
+      Einträge {{ acceptEntries() ? 'offen' : 'geschlossen' }}
+    </mat-slide-toggle>
+  </mat-card-content>
+</mat-card>
 
-<p class="field">Auswertung:</p>
+@if (loadCount() === 0) {
+  <mat-tab-group>
+    <mat-tab label="Teams">
+      <mat-list>
+        @for (r of teamResults(); track r.team.id) {
+          <mat-list-item>
+            <span matListItemTitle>{{ r.team.name }}</span>
+            <span matListItemLine>{{ r.won }}S / {{ r.lost }}N — {{ r.winRate | percent }}</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    </mat-tab>
 
-<div class="field">
-  <div class="control has-icons-left">
-    <div class="select is-fullwidth">
-      <select [disabled]="acceptEntries || loadingCount() > 0" [(ngModel)]="auswertung">
-        <option [value]="Evaluation.CLIQUE">Beste Clique</option>
-        <option [value]="Evaluation.TEAM">Bestes Team</option>
-        <option [value]="Evaluation.EASTEREGGS">Meisten Eastereggs</option>
-      </select>
-      <span class="icon is-small is-left">
-        <i class="fas fa-square-poll-vertical"></i>
-      </span>
-    </div>
-  </div>
-</div>
+    <mat-tab label="Cliquen">
+      <mat-list>
+        @for (r of cliqueResults(); track r.clique) {
+          <mat-list-item>
+            <span matListItemTitle>{{ r.clique }}</span>
+            <span matListItemLine>{{ r.wins }} Planspiel-Siege</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    </mat-tab>
 
-<h2 *ngIf="loadingCount()">Loading...</h2>
-
-<div *ngIf="auswertung == Evaluation.TEAM">
-  <div class="box field" *ngFor="let t of teamResults; index as i">
-    <h2 class="subtitle">{{i + 1}}. {{t.name}}</h2>
-    <p>Spiele gewonnen: {{t.wins}}</p>
-    <p>Spiele verloren: {{t.loses}}</p>
-    <p style="font-weight: bold">Punkte: {{t.winRate}}</p>
-  </div>
-</div>
-
-<div *ngIf="auswertung == Evaluation.CLIQUE">
-  <div class="box field" *ngFor="let c of cliqueResults; index as i">
-    <h2 class="subtitle">{{i + 1}}. {{c.name}}</h2>
-    <p style="font-weight: bold">Spiele gewonnen: {{c.wins}}</p>
-  </div>
-</div>
-
-<div *ngIf="auswertung == Evaluation.EASTEREGGS">
-  <div class="box field" *ngFor="let t of easterEggResults; index as i">
-    <h2 class="subtitle">{{i + 1}}. {{t.name}}</h2>
-    <p style="font-weight: bold">Eastereggs gefunden: {{t.found}}</p>
-  </div>
-</div>
+    <mat-tab label="Easter Eggs">
+      <mat-list>
+        @for (r of eggResults(); track r.team.id) {
+          <mat-list-item>
+            <span matListItemTitle>{{ r.team.name }}</span>
+            <span matListItemLine>{{ r.eggCount }} Easter Eggs</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    </mat-tab>
+  </mat-tab-group>
+}

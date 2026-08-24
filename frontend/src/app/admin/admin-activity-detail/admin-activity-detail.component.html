@@ -1,64 +1,57 @@
-<p class="field" style="color: grey">Zeitpunkt: {{formatTimeWithDate(activity?.timestamp)}}</p>
+<h2>Aktivität bearbeiten</h2>
 
-<p>Spiel:</p>
-  <div class="field">
-    <div class="control has-icons-left">
-      <div class="select is-fullwidth">
-        <select [(ngModel)]="selectedGameId" [disabled]="!selectedGameId || activity!.plan">
-          <option *ngFor="let g of games" value="{{g.id}}">{{g.name}}</option>
-        </select>
-        <span class="icon is-small is-left">
-        <i class="fas fa-dice"></i>
-      </span>
-      </div>
-    </div>
-  </div>
+@if (activity()) {
+  <mat-card>
+    <mat-card-content>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Spiel</mat-label>
+        <mat-select [ngModel]="selectedGame()" (ngModelChange)="selectedGame.set($event)">
+          @for (g of games(); track g.id) {
+            <mat-option [value]="g.id">{{ g.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
 
-  <p>Team 1:</p>
-  <div class="field">
-    <div class="control has-icons-left">
-      <div class="select is-fullwidth">
-        <select [(ngModel)]="selectedTeam1Id" [disabled]="!selectedTeam1Id || activity!.plan">
-          <option *ngFor="let t of teams" value="{{t.id}}">{{t.name}} ({{t.partner1}} & {{t.partner2}})</option>
-        </select>
-        <span class="icon is-small is-left">
-        <i class="fas fa-user-group"></i>
-      </span>
-      </div>
-    </div>
-  </div>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Team 1</mat-label>
+        <mat-select [ngModel]="selectedTeam1()" (ngModelChange)="selectedTeam1.set($event)">
+          @for (t of teams(); track t.id) {
+            <mat-option [value]="t.id">{{ t.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
 
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Team 2</mat-label>
+        <mat-select [ngModel]="selectedTeam2()" (ngModelChange)="selectedTeam2.set($event)">
+          @for (t of teams(); track t.id) {
+            <mat-option [value]="t.id">{{ t.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
 
-  <p>Team 2:</p>
-  <div class="field">
-    <div class="control has-icons-left">
-      <div class="select is-fullwidth">
-        <select [(ngModel)]="selectedTeam2Id" [disabled]="!selectedTeam2Id || activity!.plan">
-          <option *ngFor="let t of teams" value="{{t.id}}">{{t.name}} ({{t.partner1}} & {{t.partner2}})</option>
-        </select>
-        <span class="icon is-small is-left">
-        <i class="fas fa-user-group"></i>
-      </span>
-      </div>
-    </div>
-  </div>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Sieger</mat-label>
+        <mat-select [ngModel]="selectedWinner()" (ngModelChange)="selectedWinner.set($event)">
+          <mat-option [value]="null">Kein Sieger</mat-option>
+          @for (t of teams(); track t.id) {
+            <mat-option [value]="t.id">{{ t.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </mat-card-content>
 
-  <p>Winner:</p>
-  <div class="field">
-    <div class="control has-icons-left">
-      <div class="select is-fullwidth">
-        <select [(ngModel)]="selectedWinner" [disabled]="!activity">
-          <option *ngIf="activity?.plan" value="0">Noch offen</option>
-          <option value="1">Team 1</option>
-          <option value="2">Team 2</option>
-        </select>
-        <span class="icon is-small is-left">
-        <i class="fas fa-trophy"></i>
-      </span>
-      </div>
-    </div>
-  </div>
-
-  <button class="button is-danger is-fullwidth field" [disabled]="!activity || activity.plan" (click)="onDeleteClick()">Löschen (Press {{deleteCountdown}}x)</button>
-  <button class="button is-primary is-fullwidth field" [disabled]="!activity || selectedTeam1Id == selectedTeam2Id" (click)="onFinishClick()">Speichern</button>
-
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="save()">Speichern</button>
+      @if (!activity()!.plan) {
+        <button mat-stroked-button color="warn" (click)="startDelete()">
+          @if (deleteCountdown() < 5 && deleteCountdown() > 0) {
+            Löschen ({{ deleteCountdown() }}s)
+          } @else {
+            Löschen
+          }
+        </button>
+      }
+    </mat-card-actions>
+  </mat-card>
+}

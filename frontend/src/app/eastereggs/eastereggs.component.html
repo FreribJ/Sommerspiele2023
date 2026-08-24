@@ -1,23 +1,12 @@
 <h1 class="title">Deine Easter-Egg Sammlung:</h1>
-<!--Deaktiviert, da die IDs falsch ausgedruckt waren-->
-<!--<div class="field has-addons">-->
-<!--  <div class="control is-expanded">-->
-<!--    <input class="input {{notFound ? 'is-danger' : ''}}" placeholder="Easter-Egg Nummer" type="number" [(ngModel)]="typedNumber" (keydown)="onEnterPress($event)">-->
-<!--  </div>-->
-<!--  <div class="control">-->
-<!--    <button class="button is-primary" (click)="onGoClick()" [disabled]="!typedNumber">-->
-<!--      LOS-->
-<!--    </button>-->
-<!--  </div>-->
-<!--</div>-->
 
-
-<div *ngFor="let ee of foundEastereggs" class="field">
-  <a routerLink="./{{ee.id}}">
-  <div class="box is-flex">
-    <img class="image is-left" style="width: 30%; border-radius: 5%" src="{{ee.srcImage}}">
-    <h2 class="subtitle is-right is-align-self-center" style="margin-left: 10px">{{ee.title}}</h2>
+@for (ee of foundEastereggs(); track ee.id) {
+  <div class="field">
+    <a [routerLink]="['./', ee.id]">
+      <div class="box is-flex">
+        <img class="image is-left" style="width: 30%; border-radius: 5%" [src]="ee.srcImage">
+        <h2 class="subtitle is-right is-align-self-center" style="margin-left: 10px">{{ ee.title }}</h2>
+      </div>
+    </a>
   </div>
-
-  </a>
-</div>
+}

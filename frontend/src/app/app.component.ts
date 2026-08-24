@@ -1,66 +1,61 @@
-import {Component} from '@angular/core';
-import {ContentService} from "./content.service";
-import {ActivatedRoute, Router} from "@angular/router";
+import { Component, OnInit, computed, inject } from '@angular/core';
+import { Router, RouterOutlet, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatBadgeModule } from '@angular/material/badge';
+import { AuthService } from './core/auth.service';
+import { ContentService } from './content.service';
+import { WebSocketService } from './core/websocket.service';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet, RouterLink, MatToolbarModule, MatSidenavModule, MatListModule, MatIconModule, MatButtonModule, MatBadgeModule],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrl: './app.component.css'
 })
-export class AppComponent {
-  title = `Frenker Sommerspiele ${new Date().getFullYear()}`;
+export class AppComponent implements OnInit {
+  readonly year = new Date().getFullYear();
+  readonly title = `Sommerspiele ${this.year}`;
+  readonly auth = inject(AuthService);
+  private content = inject(ContentService);
+  private ws = inject(WebSocketService);
+  private router = inject(Router);
 
-  menuOpen = false;
-  newOpen = false
-  menuItems: { name: string, link: string, icon: string }[] = []
-  loginSuccess: boolean = false
-  returnAfterLogin?: string
-  year = new Date().getFullYear();
+  readonly menuItems = computed(() => {
+    if (!this.auth.isLoggedIn()) return [];
+    const items: { name: string; link: string; icon: string }[] = [
+      { name: 'Übersicht', link: '/', icon: 'home' },
+      { name: 'Spielplan', link: '/plans', icon: 'calendar_month' },
+      { name: 'Gespielte Spiele', link: '/activities', icon: 'checklist' },
+      { name: 'Ratespiel', link: '/guessing', icon: 'help_outline' },
+      { name: 'Einstellungen', link: '/settings', icon: 'settings' },
+    ];
+    if (this.auth.easterEggCount() > 0) items.push({ name: 'Easter Eggs', link: '/eastereggs', icon: 'egg' });
+    if (this.auth.isAdmin()) items.push({ name: 'Admin', link: '/admin', icon: 'admin_panel_settings' });
+    return items;
+  });
 
-
-  constructor(private service: ContentService,
-              private router: Router,
-              private route: ActivatedRoute) {
-    this.checkLogin()
+  ngOnInit(): void {
+    this.auth.checkLogin().subscribe({
+      next: () => {
+        this.ws.connect();
+        this.ws.activities$.subscribe(raw => this.content.mergeActivity(raw));
+      },
+      error: (err) => {
+        if (err.status === 401) this.router.navigate(['/login']);
+      }
+    });
   }
 
   logout(): void {
-    this.service.logout()
-    void this.router.navigate(['login'])
-    window.location.reload()
-  }
-
-  checkLogin() {
-    this.service.checkLogin().subscribe(value => {
-      this.loginSuccess = true
-      this.menuItems = [
-        { name: 'Übersicht', link: '', icon: 'fa-house'} ,
-        { name: 'Spielplan', link: 'plans', icon: 'fa-table-list'} ,
-        { name: 'Gespielte Spiele', link: 'activities', icon: 'fa-list-check'} ,
-        { name: 'Ratespiel', link: 'guessing', icon: 'fa-question'} ,
-        { name: 'Einstellungen', link: 'settings', icon: 'fa-gear'} ,
-      ]
-      if (value.admin) {
-        this.menuItems.push(
-          { name: 'Admin-Bereich', link: 'admin', icon: 'fa-triangle-exclamation' }
-        );
-      }
-
-      if (value.easterEggs > 0) {
-        this.menuItems.push({name: 'Easter Eggs', link: 'eastereggs', icon: 'fa-egg'})
-      }
-      if (this.returnAfterLogin && this.returnAfterLogin != '/login') {
-        this.router.navigate([this.returnAfterLogin])
-        this.returnAfterLogin = undefined
-      }
-    }, error => {
-      if (error.status == 401) {
-        this.returnAfterLogin = location.pathname
-        this.router.navigate(['login'])
-        this.menuItems = [
-          {name: 'Login', link: 'login', icon: 'fa-unlock-keyhole'}
-        ]
-      }
-    })
+    this.ws.disconnect();
+    this.auth.logout();
+    this.content.reset();
+    this.router.navigate(['/login']);
   }
 }

@@ -1,58 +1,49 @@
-import {Component} from '@angular/core';
-import {Team} from "../../model/objects";
-import {ContentService} from "../../content.service";
-import {AdminActivity} from "../../model/adminObjects";
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { MatListModule } from '@angular/material/list';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { DatePipe } from '@angular/common';
+import { ContentService } from '../../content.service';
+import { AdminActivity } from '../../model/adminObjects';
 
 @Component({
   selector: 'app-admin-activity-overview',
-  templateUrl: './admin-activity-overview.component.html',
-  styleUrls: ['./admin-activity-overview.component.css']
+  standalone: true,
+  imports: [RouterLink, FormsModule, MatListModule, MatFormFieldModule, MatInputModule, MatIconModule, MatButtonModule, DatePipe],
+  template: `<h2>Aktivitäten</h2>
+  <mat-form-field appearance="outline" style="width:100%"><mat-label>Suchen</mat-label>
+    <input matInput [ngModel]="search()" (ngModelChange)="search.set($event)"/><mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+  <mat-list>
+    @for (a of filtered(); track a.id) {
+      <mat-list-item [routerLink]="['activity', a.id]">
+        <span matListItemTitle>{{ a.game?.name }}: {{ a.team1?.name }} vs {{ a.team2?.name }}</span>
+        <span matListItemLine>{{ a.winner ? 'Sieger: ' + a.winner.name : a.plan ? 'Plan' : 'Kein Ergebnis' }} — {{ a.timestamp | date:'dd.MM.yy HH:mm' }}</span>
+        <button mat-icon-button matListItemMeta [routerLink]="['activity', a.id]"><mat-icon>edit</mat-icon></button>
+      </mat-list-item>
+    }
+  </mat-list>`
 })
-export class AdminActivityOverviewComponent {
+export class AdminActivityOverviewComponent implements OnInit {
+  private content = inject(ContentService);
 
-  allActivites: AdminActivity[] = []
-  activites: AdminActivity[] = []
-  search: string = ""
+  all = signal<AdminActivity[]>([]);
+  search = signal('');
+  filtered = computed(() => {
+    const s = this.search().toLowerCase();
+    if (!s) return this.all();
+    return this.all().filter(a =>
+      a.game?.name.toLowerCase().includes(s) ||
+      a.team1?.name.toLowerCase().includes(s) ||
+      a.team2?.name.toLowerCase().includes(s)
+    );
+  });
 
-  constructor(private service: ContentService) {
-    this.service.getAdminActivities().subscribe(result => {
-      this.allActivites = result
-      this.onKeyPress()
-    })
-  }
-
-  formatTime(date?: Date) {
-    if (!date)
-      return ""
-    return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
-  }
-
-  timeout: any
-
-  onKeyPress() {
-    if (this.timeout)
-      clearTimeout(this.timeout)
-    this.timeout = setTimeout(() => {
-      const searchPrepArray: string[] = this.search.toLowerCase().trim().split(',')
-      this.activites = this.allActivites.filter(activity => {
-        if (!this.search)
-          return true
-        for (let searchPrep of searchPrepArray) {
-          searchPrep = searchPrep.trim()
-          if (!(('Freies Spiel'.toLowerCase().includes(searchPrep) && !activity.plan) ||
-            ('Planspiel'.toLowerCase().includes(searchPrep) && activity.plan) ||
-            activity.game.name.toLowerCase().includes(searchPrep) ||
-            activity.team1.name.toLowerCase().includes(searchPrep) ||
-            activity.team2.name.toLowerCase().includes(searchPrep) ||
-            activity.team1.partner1.toLowerCase().includes(searchPrep) ||
-            activity.team1.partner2.toLowerCase().includes(searchPrep) ||
-            activity.team2.partner1.toLowerCase().includes(searchPrep) ||
-            activity.team2.partner2.toLowerCase().includes(searchPrep))) {
-            return false
-          }
-        }
-        return true
-      })
-    }, 500)
+  ngOnInit(): void {
+    this.content.getAdminActivities().subscribe(a => this.all.set(a));
   }
 }

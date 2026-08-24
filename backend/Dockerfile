@@ -1,16 +1,12 @@
-# Verwende einen offiziellen Node.js-Image als Basis
-FROM node:22-alpine
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY src ./src
+RUN mvn package -DskipTests -B
 
-# Lege das Arbeitsverzeichnis innerhalb des Containers fest
-WORKDIR /usr/src/app
-
-# Kopiere den Rest der Anwendung in das Arbeitsverzeichnis
-COPY . .
-
-RUN npm install
-
-# Der Standard-Port für die Anwendung
-EXPOSE 1234
-
-# Starte die Anwendung
-CMD ["node", "main.js"]
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/summergames-1.0.0.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

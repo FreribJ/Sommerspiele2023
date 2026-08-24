@@ -1,97 +1,90 @@
-import {Component, OnInit} from '@angular/core';
-import {ActivatedRoute, Router} from "@angular/router";
-import {ContentService} from "../../content.service";
-import {Game, Team} from "../../model/objects";
-import {AdminActivity} from "../../model/adminObjects";
-import {Location} from "@angular/common";
+import { Component, OnInit, OnDestroy, signal, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { ContentService } from '../../content.service';
+import { RestService } from '../../rest.service';
+import { AdminActivity } from '../../model/adminObjects';
 
 @Component({
   selector: 'app-admin-activity-detail',
+  standalone: true,
+  imports: [FormsModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatButtonModule],
   templateUrl: './admin-activity-detail.component.html',
-  styleUrls: ['./admin-activity-detail.component.css']
+  styleUrl: './admin-activity-detail.component.css'
 })
-export class AdminActivityDetailComponent implements OnInit {
+export class AdminActivityDetailComponent implements OnInit, OnDestroy {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private content = inject(ContentService);
+  private rest = inject(RestService);
+  private snack = inject(MatSnackBar);
 
-  activity?: AdminActivity
+  activity = signal<AdminActivity | null>(null);
+  teams = this.content.teams;
+  games = this.content.games;
+  deleteCountdown = signal(5);
+  selectedGame = signal<number | undefined>(undefined);
+  selectedTeam1 = signal<number | undefined>(undefined);
+  selectedTeam2 = signal<number | undefined>(undefined);
+  selectedWinner = signal<number | null | undefined>(undefined);
 
-  teams: Team[] = []
-  games: Game[] = []
-
-  selectedGameId?: number
-  selectedTeam1Id?: number
-  selectedTeam2Id?: number
-  selectedWinner?: number
-
-  deleteCountdown = 5
-
-  constructor(private route: ActivatedRoute,
-              private service: ContentService,
-              private router: Router,
-              private location: Location) {
-    service.getTeams().then(teams => this.teams = teams)
-    service.getGames().then(games => this.games = games)
-  }
-
-  formatTimeWithDate(date?: Date) {
-    if (!date)
-      return ""
-    return date.toLocaleDateString([], {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-
-  onFinishClick() {
-    let winnerId: number | null
-    if (this.selectedWinner == 0)
-      winnerId = null
-    else
-      winnerId = this.selectedWinner == 1 ? this.selectedTeam1Id! : this.selectedTeam2Id!
-    this.service.editAdminActivity(this.activity!.id, this.selectedGameId!, this.selectedTeam1Id!, this.selectedTeam2Id!, winnerId).subscribe(value => {
-      this.location.back()
-      // this.router.navigate(['../../'], {relativeTo: this.route, replaceUrl: true})
-      alert('Erfolgreich gespeichert')
-    })
-  }
-
-  onDeleteClick() {
-    if (this.deleteCountdown > 1) {
-      this.deleteCountdown--
-    } else {
-      this.service.deleteAdminActivity(this.activity!.id).subscribe(value => {
-        this.location.back()
-        // this.router.navigate(['../../'], {relativeTo: this.route, replaceUrl: true})
-        alert('Erfolgreich gelöscht')
-      })
-    }
-  }
+  private deleteInterval: any;
 
   ngOnInit(): void {
-    this.route.paramMap.subscribe(params => {
-      if (params.has('id')) {
-        //TODO: evtl. getOneActivity()
-        let subscription = this.service.getAdminActivities().subscribe(activities => {
-          const activity = activities.find(a => a.id === parseInt(<string>params.get('id')))
-          if (!activity) {
-            alert('activity not found')
-            return
-          }
-          this.activity = activity
-          this.selectedGameId = activity.game.id
-          this.selectedTeam1Id = activity.team1.id
-          this.selectedTeam2Id = activity.team2.id
-          if (!activity.winner)
-            this.selectedWinner = 0
-          else
-            this.selectedWinner = activity.winner.id == activity.team1.id ? 1 : 2
-          subscription.unsubscribe()
-        })
-      }
-    })
+    const activityId = +this.route.snapshot.params['id'];
+    this.content.getTeams().subscribe();
+    this.content.getGames().subscribe();
+    this.content.getAdminActivities().subscribe(all => {
+      const a = all.find(x => x.id === activityId);
+      if (!a) return;
+      this.activity.set(a);
+      this.selectedGame.set(a.game?.id);
+      this.selectedTeam1.set(a.team1?.id);
+      this.selectedTeam2.set(a.team2?.id);
+      this.selectedWinner.set(a.winner?.id ?? null);
+    });
   }
 
+  save(): void {
+    const a = this.activity();
+    if (!a) return;
+    this.rest.putAdminActivity(a.id, this.selectedGame()!, this.selectedTeam1()!, this.selectedTeam2()!, this.selectedWinner() ?? null)
+      .subscribe({
+        next: () => {
+          this.snack.open('Gespeichert', '', { duration: 2000 });
+          this.router.navigate(['/admin/activities']);
+        },
+        error: (e: any) => this.snack.open(e.error?.message || 'Fehler', '', { duration: 3000 })
+      });
+  }
+
+  startDelete(): void {
+    if (this.deleteInterval) return;
+    this.deleteInterval = setInterval(() => {
+      this.deleteCountdown.update(n => n - 1);
+      if (this.deleteCountdown() <= 0) {
+        clearInterval(this.deleteInterval);
+        this.deleteInterval = null;
+        this.doDelete();
+      }
+    }, 1000);
+  }
+
+  private doDelete(): void {
+    const a = this.activity();
+    if (!a) return;
+    this.rest.deleteAdminActivity(a.id).subscribe({
+      next: () => this.router.navigate(['/admin/activities']),
+      error: (e: any) => this.snack.open(e.error?.message || 'Fehler', '', { duration: 3000 })
+    });
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.deleteInterval);
+  }
 }

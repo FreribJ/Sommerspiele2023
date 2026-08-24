@@ -1,145 +1,87 @@
-import {Component, effect, signal} from '@angular/core';
-import {ContentService} from "../../content.service";
-import {Team} from "../../model/objects";
-import {AdminActivity, AdminEasterEgg} from "../../model/adminObjects";
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { PercentPipe } from '@angular/common';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatListModule } from '@angular/material/list';
+import { MatButtonModule } from '@angular/material/button';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatCardModule } from '@angular/material/card';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { ContentService } from '../../content.service';
+import { WebSocketService } from '../../core/websocket.service';
+import { AdminActivity, AdminEasterEgg } from '../../model/adminObjects';
+import { Team } from '../../model/objects';
 
-interface TeamResult extends Team {
-  wins: number
-  loses: number
-  winRate: number
-}
-
-interface EasterEggsResult extends Team {
-  found: number
-}
-
-interface CliqueResult {
-  id: string
-  name: string
-  wins: number
-}
-
-enum Evaluation {
-  TEAM,
-  CLIQUE,
-  EASTEREGGS
+interface TeamResult {
+  team: Team;
+  won: number;
+  lost: number;
+  winRate: number;
+  eggCount: number;
 }
 
 @Component({
   selector: 'app-admin-activity-result',
+  standalone: true,
+  imports: [PercentPipe, MatTabsModule, MatListModule, MatButtonModule, MatSlideToggleModule, MatCardModule],
   templateUrl: './admin-activity-result.component.html',
-  styleUrls: ['./admin-activity-result.component.css']
+  styleUrl: './admin-activity-result.component.css'
 })
-export class AdminActivityResultComponent {
+export class AdminActivityResultComponent implements OnInit {
+  private content = inject(ContentService);
+  private ws = inject(WebSocketService);
+  private snack = inject(MatSnackBar);
 
-  auswertung?: Evaluation
-  activities: AdminActivity[] = []
-  foundEasterEggs: AdminEasterEgg[] = [];
-  teamResults: TeamResult[] = []
+  activities = signal<AdminActivity[]>([]);
+  eggs = signal<AdminEasterEgg[]>([]);
+  teams = this.content.teams;
+  loadCount = signal(0);
+  acceptEntries = signal(false);
 
-  cliqueResults: CliqueResult[] = [
-    {id: 'jannes', name: 'Jannes Clique', wins: 0},
-    {id: 'mattes', name: 'Mattes Clique', wins: 0}
-  ]
+  teamResults = computed(() => this.calcTeamResults());
+  cliqueResults = computed(() => this.calcCliqueResults());
+  eggResults = computed(() => this.calcEggResults());
 
-  easterEggResults: EasterEggsResult[] = [];
+  ngOnInit(): void {
+    this.loadCount.set(4);
+    const done = () => this.loadCount.update(n => n - 1);
 
-  acceptEntries: boolean = false
+    this.content.getTeams().subscribe(done);
+    this.content.getAdminActivities().subscribe(a => { this.activities.set(a); done(); });
+    this.content.getAcceptEntries().subscribe(v => { this.acceptEntries.set(v.acceptEntries); done(); });
+    this.content.getAdminFoundEastereggs().subscribe(e => { this.eggs.set(e); done(); });
 
-  loadingCount = signal(0)
-
-  toggleCountdown = 5
-
-  constructor(private service: ContentService) {
-    this.loadingCount.update(count => count + 1)
-    this.service.getAcceptEntries().subscribe(value => {
-      this.acceptEntries = value.acceptEntries
-      if (value.acceptEntries) {
-        this.calculateResults()
-      }
-      this.loadingCount.update(count => count - 1)
-    })
-
-    this.loadingCount.update(count => count + 1)
-    service.getAdminActivities().subscribe(value => {
-      this.activities = value
-      this.loadingCount.update(count => count - 1)
-    })
-
-    this.loadingCount.update(count => count + 1)
-    service.getTeams().then(value => {
-      value.forEach(team => {
-        this.teamResults.push({...team, wins: 0, loses: 0, winRate: 0})
-        this.easterEggResults.push({...team, found: 0})
-      })
-      this.loadingCount.update(count => count - 1)
-    })
-
-    this.loadingCount.update(count => count + 1)
-    service.getAdminFoundEastereggs().subscribe(value => {
-      this.foundEasterEggs = value;
-      this.loadingCount.update(count => count - 1)
-    })
-
-    effect(() => {
-      if (this.loadingCount() === 0) {
-        this.calculateResults()
-      }
-    })
+    this.ws.acceptEntries$.subscribe(v => this.acceptEntries.set((v as any).acceptEntries));
   }
 
-  onToggleEntriesClick() {
-    if (this.toggleCountdown > 1) {
-      this.toggleCountdown--
-    } else {
-      if (this.acceptEntries !== undefined)
-        this.service.setAcceptEntries(!this.acceptEntries).subscribe(value => {
-          this.toggleCountdown = 5
-          this.acceptEntries = value.acceptEntries
-        })
-    }
+  toggleAcceptEntries(): void {
+    this.content.setAcceptEntries(!this.acceptEntries()).subscribe({
+      next: v => this.acceptEntries.set(v.acceptEntries),
+      error: () => this.snack.open('Fehler', '', { duration: 2000 })
+    });
   }
 
-  protected readonly Evaluation = Evaluation;
+  private calcTeamResults(): TeamResult[] {
+    return this.content.teams().map(team => {
+      const mine = this.activities().filter(a =>
+        !a.plan && (a.team1?.id === team.id || a.team2?.id === team.id) && a.winner
+      );
+      const won = mine.filter(a => a.winner?.id === team.id).length;
+      const lost = mine.length - won;
+      const eggCount = this.eggs().filter(e => e.id_team === team.id).length;
+      return { team, won, lost, winRate: mine.length ? won / mine.length : 0, eggCount };
+    }).sort((a, b) => b.won - a.won);
+  }
 
-  private calculateResults() {
-    // Team
-    this.teamResults.forEach(team => {
-      team.wins = this.activities.filter(a => a.winner && a.winner.id == team.id).length
-      team.loses = this.activities.filter(a => a.winner && a.winner.id != team.id && (a.team1.id == team.id || a.team2.id == team.id)).length
-      team.winRate = !team.wins ? 0 : !team.loses ? 1 : team.wins / (team.wins + team.loses)
-    })
-    this.teamResults.sort((a, b) => {
-      if (a.winRate == b.winRate)
-        return 0
-      if (a.winRate < b.winRate)
-        return 1
-      return -1
-    })
+  private calcCliqueResults() {
+    const cliques = ['jannes', 'mattes'];
+    return cliques.map(clique => {
+      const clTeams = this.content.teams().filter(t => t.clique === clique).map(t => t.id);
+      const wins = this.activities().filter(a => a.plan && a.winner && clTeams.includes(a.winner.id)).length;
+      return { clique, wins };
+    }).sort((a, b) => b.wins - a.wins);
+  }
 
-    // Clique
-    this.cliqueResults.forEach(clique => {
-      // @ts-ignore
-      clique.wins = this.activities.filter(a => a.plan && a.winner && a.winner.clique == clique.id).length
-    })
-    this.cliqueResults.sort((a, b) => {
-      if (a.wins == b.wins)
-        return 0
-      if (a.wins < b.wins)
-        return 1
-      return -1
-    })
-
-    // Eastereggs
-    this.easterEggResults.forEach(team => {
-      team.found = this.foundEasterEggs.filter(egg => egg.id_team === team.id).length
-    })
-    this.easterEggResults.sort((a, b) => {
-        if (a.found == b.found)
-            return 0
-        if (a.found < b.found)
-            return 1
-        return -1
-        })
+  private calcEggResults(): TeamResult[] {
+    return this.calcTeamResults().slice().sort((a, b) => b.eggCount - a.eggCount);
   }
 }
