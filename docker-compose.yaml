@@ -2,15 +2,22 @@ services:
   database:
     image: mysql:9.3
     environment:
-      MYSQL_ROOT_PASSWORD: admin  # Passwort für den root-User
-      MYSQL_USER: user  # Benutzername für die Datenbank
-      MYSQL_PASSWORD: oaiszdiufiansdfo  # Passwort für den Benutzer
-      MYSQL_DATABASE: summergames  # Name der initialen Datenbank
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_USER: user
+      MYSQL_PASSWORD: oaiszdiufiansdfo
+      MYSQL_DATABASE: summergames
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./database/initialSetup.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "3306:3306"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "user", "-poaiszdiufiansdfo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   frontend:
     build:
@@ -25,7 +32,8 @@ services:
     build:
       context: ./backend
     depends_on:
-      - database
+      database:
+        condition: service_healthy
     restart: unless-stopped
 
   adminer:

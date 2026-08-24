@@ -15,7 +15,7 @@ import {AdminActivityOverviewComponent} from './admin/admin-activity-overview/ad
 import {ActivityComponent} from './framework/activity/activity.component';
 import {FormsModule} from "@angular/forms";
 import {AdminGuessingComponent} from './admin/admin-guessing/admin-guessing.component';
-import {HttpClientModule} from "@angular/common/http";
+import {provideHttpClient} from "@angular/common/http";
 import {AdminActivityResultComponent} from './admin/admin-activity-result/admin-activity-result.component';
 import {AdminActivityDetailComponent} from './admin/admin-activity-detail/admin-activity-detail.component';
 import {EastereggsComponent} from './eastereggs/eastereggs.component';
@@ -79,12 +79,11 @@ import {SettingsComponent} from './settings/settings.component';
       {path: '**', redirectTo: '/', pathMatch: 'full'}
     ]),
     FormsModule,
-    HttpClientModule
   ],
   exports: [
     RouterModule,
   ],
-  providers: [],
+  providers: [provideHttpClient()],
   bootstrap: [AppComponent]
 })
 export class AppModule {

@@ -1,5 +1,5 @@
 # Verwende einen offiziellen Node.js-Image als Basis
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Lege das Arbeitsverzeichnis innerhalb des Containers fest
 WORKDIR /usr/src/app
